@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mitarbeitendenliste</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 700px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: #f0f0f0;
+    }
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .controls input, .controls button {
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+    .person {
+      background: white;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .completed {
+      background-color: #d1ffd6;
+    }
+    input[type="text"], select {
+      padding: 0.3rem;
+      font-size: 1rem;
+    }
+    #total {
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Mitarbeitendenliste</h1>
+
+  <div class="controls">
+    <input type="text" id="search" placeholder="Suchen...">
+    <button id="sort">Sortieren 🔽</button>
+    <button id="export">Export als CSV 📄</button>
+  </div>
+
+  <div id="list-container"></div>
+  <div id="total">Total: CHF 0.00</div>
+
+  <script>
+    const originalMitarbeiter = [
+      "Gabriel Jordi", "Tim Jordi", "Stefan Müller", "Refik Sabani", "Valon Fazlija",
+      "Katharina Feuz", "Thierry Gerber", "Anes Rizvanovic", "Braulio Stettler",
+      "Sandro Zbinden", "Martin Schär", "Denise Mäder", "Pascal Lenoir", "Samuel Jordi",
+      "Olivier Maier", "Didier Amez", "Flavia Anderegg", "Jorin Blaser", "Samuel Bütikofer",
+      "Nico Eggen", "Siri Fischer", "Jolanda Guggisberg", "Andrea Heri", "Tomas Holas"
+    ];
+
+    let mitarbeiter = [...originalMitarbeiter];
+    let ascending = true;
+
+    const listContainer = document.getElementById("list-container");
+    const totalDisplay = document.getElementById("total");
+    const searchInput = document.getElementById("search");
+    const sortButton = document.getElementById("sort");
+    const exportButton = document.getElementById("export");
+
+    function renderList() {
+      listContainer.innerHTML = "";
+
+      const query = searchInput.value.toLowerCase();
+
+      mitarbeiter.forEach(name => {
+        if (!name.toLowerCase().includes(query)) return;
+
+        const personDiv = document.createElement("div");
+        personDiv.className = "person";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+
+        const label = document.createElement("label");
+        label.textContent = name;
+
+        const betragInput = document.createElement("input");
+        betragInput.type = "text";
+        betragInput.placeholder = "CHF";
+        betragInput.style.width = "60px";
+
+        const zahlungSelect = document.createElement("select");
+        ["Bar", "Twint"].forEach(method => {
+          const option = document.createElement("option");
+          option.value = method;
+          option.text = method;
+          zahlungSelect.appendChild(option);
+        });
+
+        function updateTotal() {
+          let total = 0;
+          document.querySelectorAll(".person").forEach(div => {
+            const cb = div.querySelector("input[type='checkbox']");
+            const input = div.querySelector("input[type='text']");
+            const amount = parseFloat(input.value.replace(",", ".")) || 0;
+            if (cb.checked) {
+              total += amount;
+              div.classList.add("completed");
+            } else {
+              div.classList.remove("completed");
+            }
+          });
+          totalDisplay.textContent = "Total: CHF " + total.toFixed(2);
+        }
+
+        checkbox.addEventListener("change", updateTotal);
+        betragInput.addEventListener("input", updateTotal);
+
+        personDiv.appendChild(checkbox);
+        personDiv.appendChild(label);
+        personDiv.appendChild(betragInput);
+        personDiv.appendChild(zahlungSelect);
+        listContainer.appendChild(personDiv);
+      });
+    }
+
+    sortButton.addEventListener("click", () => {
+      ascending = !ascending;
+      mitarbeiter.sort((a, b) =>
+        ascending ? a.localeCompare(b) : b.localeCompare(a)
+      );
+      sortButton.textContent = `Sortieren ${ascending ? "🔽" : "🔼"}`;
+      renderList();
+    });
+
+    searchInput.addEventListener("input", renderList);
+
+    exportButton.addEventListener("click", () => {
+      const rows = [["Name", "Betrag", "Zahlungsmethode"]];
+      document.querySelectorAll(".person").forEach(div => {
+        const cb = div.querySelector("input[type='checkbox']");
+        if (!cb.checked) return;
+
+        const name = div.querySelector("label").textContent;
+        const betrag = div.querySelector("input[type='text']").value || "0";
+        const zahlung = div.querySelector("select").value;
+        rows.push([name, betrag, zahlung]);
+      });
+
+      const csvContent = rows.map(row => row.join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "mitarbeitende.csv";
+      link.click();
+    });
+
+    renderList();
+  </script>
+
+</body>
+</html>
