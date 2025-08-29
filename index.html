@@ -55,6 +55,12 @@
     <button id="export">Export als CSV 📄</button>
   </div>
 
+  <div class="controls">
+    <input type="text" id="new-name" placeholder="Neuer Name">
+    <button id="add">Hinzufügen ➕</button>
+    <button id="reset">Zurücksetzen ♻️</button>
+  </div>
+
   <div id="list-container"></div>
   <div id="total">Total: CHF 0.00</div>
 
@@ -67,7 +73,8 @@
       "Nico Eggen", "Siri Fischer", "Jolanda Guggisberg", "Andrea Heri", "Tomas Holas"
     ];
 
-    let mitarbeiter = [...originalMitarbeiter];
+    let data = JSON.parse(localStorage.getItem("mitarbeiterData") || "{}");
+    let mitarbeiter = JSON.parse(localStorage.getItem("mitarbeiterList")) || [...originalMitarbeiter];
     let ascending = true;
 
     const listContainer = document.getElementById("list-container");
@@ -75,6 +82,9 @@
     const searchInput = document.getElementById("search");
     const sortButton = document.getElementById("sort");
     const exportButton = document.getElementById("export");
+    const addInput = document.getElementById("new-name");
+    const addButton = document.getElementById("add");
+    const resetButton = document.getElementById("reset");
 
     function renderList() {
       listContainer.innerHTML = "";
@@ -106,24 +116,14 @@
           zahlungSelect.appendChild(option);
         });
 
-        function updateTotal() {
-          let total = 0;
-          document.querySelectorAll(".person").forEach(div => {
-            const cb = div.querySelector("input[type='checkbox']");
-            const input = div.querySelector("input[type='text']");
-            const amount = parseFloat(input.value.replace(",", ".")) || 0;
-            if (cb.checked) {
-              total += amount;
-              div.classList.add("completed");
-            } else {
-              div.classList.remove("completed");
-            }
-          });
-          totalDisplay.textContent = "Total: CHF " + total.toFixed(2);
-        }
+        const info = data[name] || {checked:false, amount:"", payment:"Bar"};
+        checkbox.checked = info.checked;
+        betragInput.value = info.amount;
+        zahlungSelect.value = info.payment || "Bar";
 
         checkbox.addEventListener("change", updateTotal);
         betragInput.addEventListener("input", updateTotal);
+        zahlungSelect.addEventListener("change", updateTotal);
 
         personDiv.appendChild(checkbox);
         personDiv.appendChild(label);
@@ -133,6 +133,31 @@
       });
     }
 
+    function updateTotal() {
+      let total = 0;
+      document.querySelectorAll(".person").forEach(div => {
+        const cb = div.querySelector("input[type='checkbox']");
+        const input = div.querySelector("input[type='text']");
+        const select = div.querySelector("select");
+        const name = div.querySelector("label").textContent;
+        const amount = parseFloat(input.value.replace(",", ".")) || 0;
+        if (cb.checked) {
+          total += amount;
+          div.classList.add("completed");
+        } else {
+          div.classList.remove("completed");
+        }
+        data[name] = {
+          checked: cb.checked,
+          amount: input.value,
+          payment: select.value
+        };
+      });
+      totalDisplay.textContent = "Total: CHF " + total.toFixed(2);
+      localStorage.setItem("mitarbeiterData", JSON.stringify(data));
+      localStorage.setItem("mitarbeiterList", JSON.stringify(mitarbeiter));
+    }
+
     sortButton.addEventListener("click", () => {
       ascending = !ascending;
       mitarbeiter.sort((a, b) =>
@@ -140,9 +165,13 @@
       );
       sortButton.textContent = `Sortieren ${ascending ? "🔽" : "🔼"}`;
       renderList();
+      updateTotal();
     });
 
-    searchInput.addEventListener("input", renderList);
+    searchInput.addEventListener("input", () => {
+      renderList();
+      updateTotal();
+    });
 
     exportButton.addEventListener("click", () => {
       const rows = [["Name", "Betrag", "Zahlungsmethode"]];
@@ -164,7 +193,27 @@
       link.click();
     });
 
+    addButton.addEventListener("click", () => {
+      const name = addInput.value.trim();
+      if (!name || mitarbeiter.includes(name)) return;
+      mitarbeiter.push(name);
+      addInput.value = "";
+      renderList();
+      updateTotal();
+    });
+
+    resetButton.addEventListener("click", () => {
+      if (!confirm("Alle Daten zurücksetzen?")) return;
+      localStorage.removeItem("mitarbeiterData");
+      localStorage.removeItem("mitarbeiterList");
+      data = {};
+      mitarbeiter = [...originalMitarbeiter];
+      renderList();
+      updateTotal();
+    });
+
     renderList();
+    updateTotal();
   </script>
 
 </body>
